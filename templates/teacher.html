@@ -1,0 +1,15 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Teacher Panel</h2>
+<form method="post">
+    Student:
+    <select name="student">
+        {% for s in students %}
+        <option value="{{ s[0] }}">{{ s[1] }}</option>
+        {% endfor %}
+    </select><br>
+    Subject: <input type="text" name="subject" required><br>
+    Score: <input type="number" name="score" step="0.01" required><br>
+    <input type="submit" value="Add Grade">
+</form>
+{% endblock %}

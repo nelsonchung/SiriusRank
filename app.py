@@ -1,0 +1,137 @@
+from flask import Flask, render_template, request, redirect, url_for, session
+import sqlite3
+from werkzeug.security import generate_password_hash, check_password_hash
+import os
+
+app = Flask(__name__)
+app.secret_key = 'secret-key-change-me'
+DB_PATH = 'data.db'
+
+# Ensure database and tables exist
+def init_db():
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute('''CREATE TABLE IF NOT EXISTS users (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        username TEXT UNIQUE NOT NULL,
+                        role TEXT NOT NULL
+                    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS passwords (
+                        user_id INTEGER UNIQUE,
+                        password TEXT NOT NULL,
+                        FOREIGN KEY(user_id) REFERENCES users(id)
+                    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS grades (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        student_id INTEGER,
+                        subject TEXT,
+                        score REAL,
+                        FOREIGN KEY(student_id) REFERENCES users(id)
+                    )''')
+    conn.commit()
+    conn.close()
+
+# Helper to get db connection
+
+def get_db_connection():
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+@app.route('/')
+def index():
+    if 'user_id' in session:
+        if session['role'] == 'teacher':
+            return redirect(url_for('teacher'))
+        else:
+            return redirect(url_for('student'))
+    return render_template('index.html')
+
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        role = request.form['role']
+        conn = get_db_connection()
+        cur = conn.cursor()
+        try:
+            cur.execute('INSERT INTO users (username, role) VALUES (?, ?)', (username, role))
+            user_id = cur.lastrowid
+            hashed = generate_password_hash(password)
+            cur.execute('INSERT INTO passwords (user_id, password) VALUES (?, ?)', (user_id, hashed))
+            conn.commit()
+            conn.close()
+            return redirect(url_for('login'))
+        except sqlite3.IntegrityError:
+            conn.close()
+            return 'Username already exists'
+    return render_template('register.html')
+
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form['username']
+        password = request.form['password']
+        conn = get_db_connection()
+        cur = conn.cursor()
+        cur.execute('SELECT id, role FROM users WHERE username=?', (username,))
+        user = cur.fetchone()
+        if user:
+            user_id, role = user
+            cur.execute('SELECT password FROM passwords WHERE user_id=?', (user_id,))
+            pw_row = cur.fetchone()
+            if pw_row and check_password_hash(pw_row[0], password):
+                session['user_id'] = user_id
+                session['role'] = role
+                conn.close()
+                if role == 'teacher':
+                    return redirect(url_for('teacher'))
+                else:
+                    return redirect(url_for('student'))
+        conn.close()
+        return 'Invalid credentials'
+    return render_template('login.html')
+
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('index'))
+
+@app.route('/teacher', methods=['GET', 'POST'])
+def teacher():
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    if request.method == 'POST':
+        student_id = request.form['student']
+        subject = request.form['subject']
+        score = request.form['score']
+        cur.execute('INSERT INTO grades (student_id, subject, score) VALUES (?, ?, ?)',
+                    (student_id, subject, score))
+        conn.commit()
+    cur.execute('SELECT id, username FROM users WHERE role="student"')
+    students = cur.fetchall()
+    conn.close()
+    return render_template('teacher.html', students=students)
+
+@app.route('/student')
+def student():
+    if 'user_id' not in session or session['role'] != 'student':
+        return redirect(url_for('login'))
+    user_id = session['user_id']
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT subject, score FROM grades WHERE student_id=?', (user_id,))
+    grades = cur.fetchall()
+    cur.execute('SELECT SUM(score), AVG(score) FROM grades WHERE student_id=?', (user_id,))
+    total, avg = cur.fetchone()
+    conn.close()
+    total = total or 0
+    avg = avg or 0
+    return render_template('student.html', grades=grades, total=total, avg=avg)
+
+if __name__ == '__main__':
+    init_db()
+    app.run(debug=True)
