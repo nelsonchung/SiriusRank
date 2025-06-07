@@ -2,9 +2,9 @@
 {% block content %}
 <h2>Your Grades</h2>
 <table border="1">
-<tr><th>Subject</th><th>Score</th></tr>
+<tr><th>Subject</th><th>Class</th><th>Score</th></tr>
 {% for g in grades %}
-<tr><td>{{ g[0] }}</td><td>{{ g[1] }}</td></tr>
+<tr><td>{{ g[0] }}</td><td>{{ g[1] }}</td><td>{{ g[2] }}</td></tr>
 {% endfor %}
 </table>
 <p>Total: {{ total }}</p>

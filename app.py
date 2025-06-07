@@ -21,12 +21,23 @@ def init_db():
                         password TEXT NOT NULL,
                         FOREIGN KEY(user_id) REFERENCES users(id)
                     )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS classes (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE NOT NULL
+                    )''')
+    cur.execute('''CREATE TABLE IF NOT EXISTS subjects (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        name TEXT UNIQUE NOT NULL
+                    )''')
     cur.execute('''CREATE TABLE IF NOT EXISTS grades (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         student_id INTEGER,
-                        subject TEXT,
+                        class_id INTEGER,
+                        subject_id INTEGER,
                         score REAL,
-                        FOREIGN KEY(student_id) REFERENCES users(id)
+                        FOREIGN KEY(student_id) REFERENCES users(id),
+                        FOREIGN KEY(class_id) REFERENCES classes(id),
+                        FOREIGN KEY(subject_id) REFERENCES subjects(id)
                     )''')
     conn.commit()
     conn.close()
@@ -106,15 +117,20 @@ def teacher():
     cur = conn.cursor()
     if request.method == 'POST':
         student_id = request.form['student']
-        subject = request.form['subject']
+        class_id = request.form['class']
+        subject_id = request.form['subject']
         score = request.form['score']
-        cur.execute('INSERT INTO grades (student_id, subject, score) VALUES (?, ?, ?)',
-                    (student_id, subject, score))
+        cur.execute('INSERT INTO grades (student_id, class_id, subject_id, score) VALUES (?, ?, ?, ?)',
+                    (student_id, class_id, subject_id, score))
         conn.commit()
     cur.execute('SELECT id, username FROM users WHERE role="student"')
     students = cur.fetchall()
+    cur.execute('SELECT id, name FROM classes')
+    classes = cur.fetchall()
+    cur.execute('SELECT id, name FROM subjects')
+    subjects = cur.fetchall()
     conn.close()
-    return render_template('teacher.html', students=students)
+    return render_template('teacher.html', students=students, classes=classes, subjects=subjects)
 
 @app.route('/student')
 def student():
@@ -123,7 +139,11 @@ def student():
     user_id = session['user_id']
     conn = get_db_connection()
     cur = conn.cursor()
-    cur.execute('SELECT subject, score FROM grades WHERE student_id=?', (user_id,))
+    cur.execute('''SELECT subjects.name, classes.name, score
+                   FROM grades
+                   JOIN subjects ON grades.subject_id = subjects.id
+                   JOIN classes ON grades.class_id = classes.id
+                   WHERE student_id=?''', (user_id,))
     grades = cur.fetchall()
     cur.execute('SELECT SUM(score), AVG(score) FROM grades WHERE student_id=?', (user_id,))
     total, avg = cur.fetchone()
@@ -131,6 +151,28 @@ def student():
     total = total or 0
     avg = avg or 0
     return render_template('student.html', grades=grades, total=total, avg=avg)
+
+
+@app.route('/manage', methods=['GET', 'POST'])
+def manage():
+    if 'user_id' not in session or session['role'] != 'teacher':
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    if request.method == 'POST':
+        item_type = request.form['type']
+        name = request.form['name']
+        if item_type == 'class':
+            cur.execute('INSERT INTO classes (name) VALUES (?)', (name,))
+        elif item_type == 'subject':
+            cur.execute('INSERT INTO subjects (name) VALUES (?)', (name,))
+        conn.commit()
+    cur.execute('SELECT id, name FROM classes')
+    classes = cur.fetchall()
+    cur.execute('SELECT id, name FROM subjects')
+    subjects = cur.fetchall()
+    conn.close()
+    return render_template('manage.html', classes=classes, subjects=subjects)
 
 if __name__ == '__main__':
     init_db()

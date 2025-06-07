@@ -8,8 +8,20 @@
         <option value="{{ s[0] }}">{{ s[1] }}</option>
         {% endfor %}
     </select><br>
-    Subject: <input type="text" name="subject" required><br>
+    Class:
+    <select name="class">
+        {% for c in classes %}
+        <option value="{{ c[0] }}">{{ c[1] }}</option>
+        {% endfor %}
+    </select><br>
+    Subject:
+    <select name="subject">
+        {% for sub in subjects %}
+        <option value="{{ sub[0] }}">{{ sub[1] }}</option>
+        {% endfor %}
+    </select><br>
     Score: <input type="number" name="score" step="0.01" required><br>
     <input type="submit" value="Add Grade">
 </form>
+<p><a href="{{ url_for('manage') }}">Manage Classes/Subjects</a></p>
 {% endblock %}
