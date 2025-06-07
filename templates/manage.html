@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Manage Classes and Subjects</h2>
+<h3>Add Class</h3>
+<form method="post">
+    <input type="hidden" name="type" value="class">
+    Name: <input type="text" name="name" required>
+    <input type="submit" value="Add Class">
+</form>
+<ul>
+{% for c in classes %}
+<li>{{ c[1] }}</li>
+{% endfor %}
+</ul>
+<h3>Add Subject</h3>
+<form method="post">
+    <input type="hidden" name="type" value="subject">
+    Name: <input type="text" name="name" required>
+    <input type="submit" value="Add Subject">
+</form>
+<ul>
+{% for s in subjects %}
+<li>{{ s[1] }}</li>
+{% endfor %}
+</ul>
+{% endblock %}
