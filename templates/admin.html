@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>Admin Panel</h2>
+<ul>
+    {% for c in classes %}
+    <li><a href="{{ url_for('class_rank', class_id=c[0]) }}">{{ c[1] }} Ranking</a></li>
+    {% endfor %}
+</ul>
+<p><a href="{{ url_for('school_rank') }}">School Ranking</a></p>
+{% endblock %}

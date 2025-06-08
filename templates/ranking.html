@@ -1,0 +1,10 @@
+{% extends 'base.html' %}
+{% block content %}
+<h2>{{ title }}</h2>
+<table border="1">
+<tr><th>Rank</th><th>Student</th><th>Total</th></tr>
+{% for r in ranks %}
+<tr><td>{{ loop.index }}</td><td>{{ r[0] }}</td><td>{{ r[1] }}</td></tr>
+{% endfor %}
+</table>
+{% endblock %}

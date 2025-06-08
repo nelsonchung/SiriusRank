@@ -7,7 +7,9 @@ A simple grade management system built with Python 3, Flask and SQLite.
 - User registration and login with separate password storage
 - Teacher panel to upload grades for students
 - Student panel to view personal grades, total and average
-- Manage classes and subjects; teachers select them when adding grades
+- Admin panel to view rankings
+- Manage classes and subjects; teachers or admins can add them
+- Class and school ranking pages
 - SQLite database stored in `data.db`
 
 ## Usage
