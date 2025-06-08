@@ -11,6 +11,11 @@
             {% if session['role'] == 'teacher' %}
                 <a href="{{ url_for('teacher') }}">Teacher</a>
                 <a href="{{ url_for('manage') }}">Manage</a>
+                <a href="{{ url_for('school_rank') }}">Ranking</a>
+            {% elif session['role'] == 'admin' %}
+                <a href="{{ url_for('admin') }}">Admin</a>
+                <a href="{{ url_for('manage') }}">Manage</a>
+                <a href="{{ url_for('school_rank') }}">Ranking</a>
             {% else %}
                 <a href="{{ url_for('student') }}">Student</a>
             {% endif %}

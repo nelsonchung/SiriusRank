@@ -54,6 +54,8 @@ def index():
     if 'user_id' in session:
         if session['role'] == 'teacher':
             return redirect(url_for('teacher'))
+        elif session['role'] == 'admin':
+            return redirect(url_for('admin'))
         else:
             return redirect(url_for('student'))
     return render_template('index.html')
@@ -98,6 +100,8 @@ def login():
                 conn.close()
                 if role == 'teacher':
                     return redirect(url_for('teacher'))
+                elif role == 'admin':
+                    return redirect(url_for('admin'))
                 else:
                     return redirect(url_for('student'))
         conn.close()
@@ -155,7 +159,7 @@ def student():
 
 @app.route('/manage', methods=['GET', 'POST'])
 def manage():
-    if 'user_id' not in session or session['role'] != 'teacher':
+    if 'user_id' not in session or session['role'] not in ('teacher', 'admin'):
         return redirect(url_for('login'))
     conn = get_db_connection()
     cur = conn.cursor()
@@ -173,6 +177,51 @@ def manage():
     subjects = cur.fetchall()
     conn.close()
     return render_template('manage.html', classes=classes, subjects=subjects)
+
+@app.route('/admin')
+def admin():
+    if 'user_id' not in session or session['role'] != 'admin':
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT id, name FROM classes')
+    classes = cur.fetchall()
+    conn.close()
+    return render_template('admin.html', classes=classes)
+
+@app.route('/rank/class/<int:class_id>')
+def class_rank(class_id):
+    if 'user_id' not in session or session['role'] not in ('teacher', 'admin'):
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('SELECT name FROM classes WHERE id=?', (class_id,))
+    row = cur.fetchone()
+    class_name = row[0] if row else 'Unknown'
+    cur.execute('''SELECT users.username, SUM(grades.score) as total
+                   FROM grades
+                   JOIN users ON grades.student_id = users.id
+                   WHERE grades.class_id=?
+                   GROUP BY grades.student_id
+                   ORDER BY total DESC''', (class_id,))
+    ranks = cur.fetchall()
+    conn.close()
+    return render_template('ranking.html', ranks=ranks, title=f"{class_name} Ranking")
+
+@app.route('/rank/school')
+def school_rank():
+    if 'user_id' not in session or session['role'] not in ('teacher', 'admin'):
+        return redirect(url_for('login'))
+    conn = get_db_connection()
+    cur = conn.cursor()
+    cur.execute('''SELECT users.username, SUM(grades.score) as total
+                   FROM grades
+                   JOIN users ON grades.student_id = users.id
+                   GROUP BY grades.student_id
+                   ORDER BY total DESC''')
+    ranks = cur.fetchall()
+    conn.close()
+    return render_template('ranking.html', ranks=ranks, title='School Ranking')
 
 if __name__ == '__main__':
     init_db()
